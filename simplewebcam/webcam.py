@@ -11,15 +11,26 @@ class MyWebcam(QMainWindow):
         super(MyWebcam, self).__init__()
         self.initUI()
     def initUI(self):
-        self.setGeometry(500, 500, 500, 500)
+        self.setGeometry( 500, 500,1000, 1000)
         self.setWindowTitle("Tech With Tim")
 
         self.label = QtWidgets.QLabel(self)
-        self.label.setText("my first label!")
-        self.label.move(50, 50)
-
+        self.label.setText("placed screen!")
+        self.label.move(50, 90)
+        self.label1 = QtWidgets.QLabel(self)
+        self.label1.setText("my cuttiest perspective!")
+        
+        self.label1.size(10)
+        #self.label1.setFont
         self.b1 = QtWidgets.QPushButton(self)
-        self.b1.setText("click me!")
+        self.b1.setText("shot pic!")
+        self.b1.move(10,40)
+        self.b2 = QtWidgets.QPushButton(self)   
+        self.b2.setText("record video!")  
+        self.b2.move(120,40)  
+        self.b3 = QtWidgets.QPushButton(self)   
+        self.b3.setText("setting!")  
+        self.b3.move(880,40) 
 
         #self.b1.clicked.connect(self.button_clicked)
 
