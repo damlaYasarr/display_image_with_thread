@@ -1,67 +1,101 @@
-import time
-from PyQt5 import QtWidgets, QtGui
-from PyQt5.QtWidgets import QApplication, QMainWindow
-from PySide2 import QtCore
+from PyQt5 import QtGui
+from PyQt5.QtWidgets import QWidget, QApplication, QLabel, QVBoxLayout,QPushButton
+from PyQt5.QtGui import QPixmap
 import sys
-import threading
-import asyncio
+import cv2
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QThread
+import numpy as np
 
-class MyWebcam(QMainWindow):
+
+class VideoThread(QThread):
+    change_pixmap_signal = pyqtSignal(np.ndarray)
+
     def __init__(self):
-        super(MyWebcam, self).__init__()
-        self.initUI()
-    def initUI(self):
-        self.setGeometry( 500, 500,1000, 1000)
-        self.setWindowTitle("Tech With Tim")
+        super().__init__()
+        self._run_flag = True
 
-        self.label = QtWidgets.QLabel(self)
-        self.label.setText("placed screen!")
-        self.label.move(50, 90)
-        self.label1 = QtWidgets.QLabel(self)
-        self.label1.setText("my cuttiest perspective!")
+    def run(self):
+        # capture from web cam
+        cap = cv2.VideoCapture(0)
         
-        self.label1.size(10)
-        #self.label1.setFont
-        self.b1 = QtWidgets.QPushButton(self)
-        self.b1.setText("shot pic!")
-        self.b1.move(10,40)
-        self.b2 = QtWidgets.QPushButton(self)   
-        self.b2.setText("record video!")  
-        self.b2.move(120,40)  
-        self.b3 = QtWidgets.QPushButton(self)   
-        self.b3.setText("setting!")  
-        self.b3.move(880,40) 
+        while self._run_flag:
+            ret, cv_img = cap.read()
+            key=cv2.waitKey(1)
+            if ret :
+                ret, cv_img = cap.read()
+                cv2.imwrite("/home/damlayasarr/display_image_with_thread/images/c.png", cv_img)
+                self.change_pixmap_signal.emit(cv_img)
+        # shut down capture system
+        cap.release()
 
-        #self.b1.clicked.connect(self.button_clicked)
+    def stop(self):
+        """Sets run flag to False and waits for thread to finish"""
+        self._run_flag = False
+        self.wait()
 
-    def capturePhoto(self):
-        pass
+
+class App(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Qt live label demo")
+        self.setGeometry(700,600,700,600)
+        self.disply_width = 640
+        self.display_height = 480
+        # create the label that holds the image
+        # create buttons 
+        self.photo_button=QPushButton(self)
+        self.photo_button.clicked.connect(VideoThread)
+        self.camera_action=QPushButton(self)
+        self.photo_button.setText("shot photo")
+        self.camera_action.setText("video record")
+        self.photo_button.move(10,10)
+        self.camera_action.move(100,10)
+        self.image_label = QLabel(self)
+        self.image_label.move(40,60)
+        self.image_label.resize(self.disply_width, self.display_height)
         
-    def recordvideoo(self):
-        pass
+        # create a text label
+        self.textLabel = QLabel('Webcam')
+
+        # create a vertical box layout and add the two labels
+        vbox = QVBoxLayout()
+        vbox.setContentsMargins(10,80,0,0)
+        vbox.addWidget(self.image_label)
+        vbox.addWidget(self.textLabel)
+        # set the vbox layout as the widgets layout
+        self.setLayout(vbox)
+        
+
+        # create the video capture thread
+        self.thread = VideoThread()
+        # connect its signal to the update_image slot
+        self.thread.change_pixmap_signal.connect(self.update_image)
+        # start the thread
+        self.thread.start()
+
+    def closeEvent(self, event):
+        self.thread.stop()
+        event.accept()
+
+
+
+    @pyqtSlot(np.ndarray)
+    def update_image(self, cv_img):
+        """Updates the image_label with a new opencv image"""
+        qt_img = self.convert_cv_qt(cv_img)
+        self.image_label.setPixmap(qt_img)
     
-    def openrecords(self):
-        pass
-    def openPicture(self):
-        pass
+    def convert_cv_qt(self, cv_img):
+        """Convert from an opencv image to QPixmap"""
+        rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb_image.shape
+        bytes_per_line = ch * w
+        convert_to_Qt_format = QtGui.QImage(rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888)
+        p = convert_to_Qt_format.scaled(self.disply_width, self.display_height, Qt.KeepAspectRatio)
+        return QPixmap.fromImage(p)
     
-"""
-def thread():
-   #sr = "/home/damlayasarr/threadExample/images/bisi.png"
-    img_thread = threading.Thread(target=MyWebcam.button_clicked, args=(sr,))
-    img_thread.start()
-    while img_thread.is_alive():
-        print(f"doing some other stuff while the thread does its thing")
-        time.sleep(1)
-    img_thread.join()
-"""
-def window():
-    #thread()
+if __name__=="__main__":
     app = QApplication(sys.argv)
-    win = MyWebcam()
-    win.show()
-
+    a = App()
+    a.show()
     sys.exit(app.exec_())
-
-
-window()
